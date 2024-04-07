@@ -17,21 +17,32 @@ namespace CRUDAPI.Controllers
     public class UsuariosController : ControllerBase
     {
         private readonly HolamundoContext _context;
+        private readonly ILogger<UsuariosController> _logger;
 
-        public UsuariosController(HolamundoContext context)
+        public UsuariosController(HolamundoContext context, ILogger<UsuariosController> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         // GET: api/Usuarios
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuarios()
         {
-            if (_context.Usuarios == null)
+            try
             {
-                return NotFound();
+                if (_context.Usuarios == null)
+                {
+                    return NotFound();
+                }
+                return await _context.Usuarios.ToListAsync();
             }
-            return await _context.Usuarios.ToListAsync();
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error en el metodo GetUsuarios: {ex.Message}");
+                return StatusCode(500, "Se produjo un error al obtener los datos");
+            }
+            
         }
         [HttpPost("ProcedureUsuario")]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosPro(Class input)
