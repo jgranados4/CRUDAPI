@@ -104,7 +104,6 @@ namespace CRUDAPI.Controllers
         }
 
         // POST: api/UsuarioAUs
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
         public async Task<ActionResult<UsuarioAU>> PostUsuarioAU(UsuarioAU usuarioAU)
         {
