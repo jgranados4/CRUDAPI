@@ -3,9 +3,13 @@ using System.Text;
 
 namespace CRUDAPI.Services
 {
-    public class UtilidadesService
+    public interface IUtilidadesService
     {
-        public static string EncriptarClave(string clave)
+        string EncriptarClave(string clave);
+    }
+    public class UtilidadesService:IUtilidadesService
+    {
+        public  string EncriptarClave(string clave)
         {
 
             StringBuilder sb = new StringBuilder();
