@@ -17,11 +17,16 @@ namespace CRUDAPI.Controllers
         private readonly HolamundoContext _context;
         //Servicios
         private readonly ITokenService _tokenService;
+        private readonly IUtilidadesService _utilidadesService;
+        //Logger
+        private readonly ILogger<UsuarioAUsController> _logger;
 
-        public UsuarioAUsController(HolamundoContext context, ITokenService tokenService)
+        public UsuarioAUsController(HolamundoContext context, ITokenService tokenService, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService)
         {
             _context = context;
             _tokenService = tokenService;
+            _logger = logger;
+            _utilidadesService = utilidadesService;
         }
 
         // GET: api/UsuarioAUs
@@ -32,6 +37,7 @@ namespace CRUDAPI.Controllers
           {
               return NotFound();
           }
+          _logger.LogInformation("Obteniendo datos de la tabla UsuariosAU");
             return await _context.UsuariosAU.ToListAsync();
         }
 
@@ -87,7 +93,8 @@ namespace CRUDAPI.Controllers
         [HttpPost("login")]
         public async Task<ActionResult<UsuarioAU>> Login(UsuarioAU usuarioAU)
         {
-            var usuario = await _context.UsuariosAU.FirstOrDefaultAsync(u => u.Email == usuarioAU.Email && u.Constrasena == usuarioAU.Constrasena);
+            var EncrypPass = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
+            var usuario = await _context.UsuariosAU.FirstOrDefaultAsync(u => u.Email == usuarioAU.Email && u.Constrasena == EncrypPass);
             if (usuario == null)
             {
                 return NotFound("No encontrado");
@@ -105,6 +112,9 @@ namespace CRUDAPI.Controllers
           {
               return Problem("Entity set 'HolamundoContext.UsuariosAU'  is null.");
           }
+            usuarioAU.Constrasena = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
+            _logger.LogInformation("Insertando datos en la tabla UsuariosAU"+usuarioAU.Constrasena);
+          
             _context.UsuariosAU.Add(usuarioAU);
             await _context.SaveChangesAsync();
 
