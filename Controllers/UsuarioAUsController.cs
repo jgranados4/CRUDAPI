@@ -95,9 +95,9 @@ namespace CRUDAPI.Controllers
         {
             var EncrypPass = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
             var usuario = await _context.UsuariosAU.FirstOrDefaultAsync(u => u.Email == usuarioAU.Email && u.Constrasena == EncrypPass);
-            if (usuario == null)
+            if (usuario == null )
             {
-                return NotFound("No encontrado");
+                return NotFound("Credenciales Incorrectas");
             }
             var token= _tokenService.GenerateToken(usuario);
             return Ok(token);
