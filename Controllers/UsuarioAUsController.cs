@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using CRUDAPI.Models;
 using CRUDAPI.Services;
 using Newtonsoft.Json;
+using CRUDAPI.Dtos;
 
 namespace CRUDAPI.Controllers
 {
@@ -101,8 +102,11 @@ namespace CRUDAPI.Controllers
                 return NotFound("Credenciales Incorrectas");
             }
             var token= _tokenService.GenerateToken(usuario);
-            var tokenObject=new { Bearer = token,Message="Acceso Autorizado"};
-            return Ok(JsonConvert.SerializeObject(tokenObject));
+            return Ok(new AuthResponse
+            {
+                Token = token,
+                Message = "Login Exitoso"
+            });
         }
 
         // POST: api/UsuarioAUs
