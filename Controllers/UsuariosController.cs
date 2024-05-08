@@ -45,7 +45,7 @@ namespace CRUDAPI.Controllers
             
         }
         [HttpPost("ProcedureUsuario")]
-        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosPro(Class input)
+        public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosPro(PropiedadesProcedimiento input)
         {
             try
             {
