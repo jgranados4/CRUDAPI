@@ -24,8 +24,8 @@ namespace CRUDAPI.Services
 
             var claims = new[]
             {
-                new Claim(ClaimTypes.NameIdentifier, user.Nombre),
-                new Claim(ClaimTypes.Email, user.Email),
+                new Claim(JwtRegisteredClaimNames.Name, user.Nombre),
+                new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 //new Claim(ClaimTypes.GivenName, user.FirstName),
                 //new Claim(ClaimTypes.Surname, user.LastName),
                 //new claim(claimtypes.role, user.rol),
