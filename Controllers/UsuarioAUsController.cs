@@ -9,6 +9,7 @@ using CRUDAPI.Models;
 using CRUDAPI.Services;
 using Newtonsoft.Json;
 using CRUDAPI.Dtos;
+using CRUDAPI.Services.contrato;
 
 namespace CRUDAPI.Controllers
 {
@@ -20,26 +21,28 @@ namespace CRUDAPI.Controllers
         //Servicios
         private readonly ITokenService _tokenService;
         private readonly IUtilidadesService _utilidadesService;
+        private readonly IEmailService _emailService;
         //Logger
         private readonly ILogger<UsuarioAUsController> _logger;
 
-        public UsuarioAUsController(HolamundoContext context, ITokenService tokenService, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService)
+        public UsuarioAUsController(HolamundoContext context, ITokenService tokenService, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService,IEmailService emailService)
         {
             _context = context;
             _tokenService = tokenService;
             _logger = logger;
             _utilidadesService = utilidadesService;
+            _emailService = emailService;
         }
 
         // GET: api/UsuarioAUs
         [HttpGet]
         public async Task<ActionResult<IEnumerable<UsuarioAU>>> GetUsuariosAU()
         {
-          if (_context.UsuariosAU == null)
-          {
-              return NotFound();
-          }
-          _logger.LogInformation("Obteniendo datos de la tabla UsuariosAU");
+            if (_context.UsuariosAU == null)
+            {
+                return NotFound();
+            }
+            _logger.LogInformation("Obteniendo datos de la tabla UsuariosAU");
             return await _context.UsuariosAU.ToListAsync();
         }
 
@@ -47,10 +50,10 @@ namespace CRUDAPI.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<UsuarioAU>> GetUsuarioAU(int id)
         {
-          if (_context.UsuariosAU == null)
-          {
-              return NotFound();
-          }
+            if (_context.UsuariosAU == null)
+            {
+                return NotFound();
+            }
             var usuarioAU = await _context.UsuariosAU.FindAsync(id);
 
             if (usuarioAU == null)
@@ -91,17 +94,32 @@ namespace CRUDAPI.Controllers
 
             return NoContent();
         }
+        //[HttpPost("resetPassword")]
+        //public async Task<ActionResult<UsuarioAU>> resetPassword(ResetPasswordDTO resetPasswordDTO)
+        //{
+        //    var usuarios=await _context.UsuariosAU.FindAsync(resetPasswordDTO.Email);
+        //    if (usuarios is null)
+        //    {
+        //        return BadRequest(new AuthResponse
+        //        {
+        //            Message = "Usuario no encontrado"
+        //        });
+                
+        //    }
+        //    var result = await _context.UsuariosAU(resetPasswordDTO);
+
+        //}
         //login
         [HttpPost("login")]
         public async Task<ActionResult<UsuarioAU>> Login(UsuarioAU usuarioAU)
         {
             var EncrypPass = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
             var usuario = await _context.UsuariosAU.FirstOrDefaultAsync(u => u.Email == usuarioAU.Email && u.Constrasena == EncrypPass);
-            if (usuario == null )
+            if (usuario == null)
             {
                 return NotFound("Credenciales Incorrectas");
             }
-            var token= _tokenService.GenerateToken(usuario);
+            var token = _tokenService.GenerateToken(usuario);
             return Ok(new AuthResponse
             {
                 Token = token,
@@ -113,13 +131,13 @@ namespace CRUDAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<UsuarioAU>> PostUsuarioAU(UsuarioAU usuarioAU)
         {
-          if (_context.UsuariosAU == null)
-          {
-              return Problem("Entity set 'HolamundoContext.UsuariosAU'  is null.");
-          }
+            if (_context.UsuariosAU == null)
+            {
+                return Problem("Entity set 'HolamundoContext.UsuariosAU'  is null.");
+            }
             usuarioAU.Constrasena = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
-            _logger.LogInformation("Insertando datos en la tabla UsuariosAU"+usuarioAU.Constrasena);
-          
+            _logger.LogInformation("Insertando datos en la tabla UsuariosAU" + usuarioAU.Constrasena);
+
             _context.UsuariosAU.Add(usuarioAU);
             await _context.SaveChangesAsync();
 
@@ -144,6 +162,25 @@ namespace CRUDAPI.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+        //Enviar Correos
+        [HttpPost("SendEmail")]
+        public async Task<IActionResult> SendEmail()
+        {
+            try
+            {
+                MailrequestDTO mailrequest = new MailrequestDTO();
+                mailrequest.ToEmail = "xavier10001985@gmail.com";
+                mailrequest.Subject = "Prueba de Correo";
+                mailrequest.Body = "<h1>Prueba de Correo</h1>";
+                await _emailService.SendEmailAsync(mailrequest);
+                return Ok("Correo Enviado");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message, "Error al enviar correo");
+                return BadRequest(ex.Message);
+            }
         }
 
         private bool UsuarioAUExists(int id)

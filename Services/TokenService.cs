@@ -10,25 +10,24 @@ namespace CRUDAPI.Services
     {
         string GenerateToken(UsuarioAU user);
     }
-    public class TokenService:ITokenService
+    public class TokenService : ITokenService
     {
         private readonly IConfiguration _config;
         public TokenService(IConfiguration config)
         {
             _config = config;
         }
-         public  string GenerateToken(UsuarioAU user)
+        public string GenerateToken(UsuarioAU user)
         {
-            var secretKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:key"]));
-            var credentials = new SigningCredentials(secretKey, SecurityAlgorithms.HmacSha256);
+            var Key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
+            var signIn = new SigningCredentials(Key, SecurityAlgorithms.HmacSha256);
 
             var claims = new[]
             {
+                new Claim(JwtRegisteredClaimNames.NameId, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Name, user.Nombre),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                //new Claim(ClaimTypes.GivenName, user.FirstName),
-                //new Claim(ClaimTypes.Surname, user.LastName),
-                //new claim(claimtypes.role, user.rol),
+                new Claim(ClaimTypes.Role,user.Rol)
             };
             //crear Token
             var token = new JwtSecurityToken(
@@ -36,8 +35,7 @@ namespace CRUDAPI.Services
                                               audience: _config["Jwt:Audience"],
                                                              claims: claims,
                                                                             expires: DateTime.Now.AddMinutes(30),
-                                                                                           signingCredentials: credentials
-                                                                                                      );
+                            signingCredentials: signIn);
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
     }
