@@ -1,4 +1,4 @@
-﻿namespace CRUDAPI.Models
+﻿namespace CRUDAPI.Domain.entities
 {
     public class PropiedadesProcedimiento
     {

@@ -5,11 +5,11 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CRUDAPI.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.AspNetCore.Authorization;
+using CRUDAPI.Domain.entities;
 
-namespace CRUDAPI.Controllers
+namespace CRUDAPI.Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -39,10 +39,10 @@ namespace CRUDAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error en el metodo GetUsuarios:",ex.Message);
+                _logger.LogError("Error en el metodo GetUsuarios:", ex.Message);
                 return StatusCode(500, "Se produjo un error al obtener los datos");
             }
-            
+
         }
         [HttpPost("ProcedureUsuario")]
         public async Task<ActionResult<IEnumerable<Usuario>>> GetUsuariosPro(PropiedadesProcedimiento input)
@@ -149,7 +149,7 @@ namespace CRUDAPI.Controllers
         }
         //DELETEALL:api/Usuarios
         [HttpDelete("DeleteTotal")]
-        public async  Task<IActionResult> TruncateUsuarios()
+        public async Task<IActionResult> TruncateUsuarios()
         {
             try
             {

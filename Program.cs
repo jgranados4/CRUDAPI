@@ -1,11 +1,16 @@
-using CRUDAPI.Models;
-using CRUDAPI.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.Configuration;
 using Serilog;
 using System.Text;
+using CRUDAPI.Domain.Dtos;
+using CRUDAPI.Domain.entities;
+using CRUDAPI.Infrastructure.datasources;
+using CRUDAPI.Domain.DataSources;
+using CRUDAPI.Domain.Repositories;
+using CRUDAPI.Infrastructure.repositories;
 
 var builder = WebApplication.CreateBuilder(args);
 //Logger
@@ -17,6 +22,7 @@ builder.Host.UseSerilog();
 // Add services to the container.
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+builder.Services.Configure<MailSettingDTO>(builder.Configuration.GetSection("MailSettings"));
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
@@ -53,25 +59,33 @@ builder.Services.AddCors(options =>
     options.AddPolicy("CorsPolicy", builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
 });
 //Autentificacion JWT
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services.AddAuthentication(config =>
+{
+    config.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    config.DefaultChallengeScheme=JwtBearerDefaults.AuthenticationScheme;
+})
     .AddJwtBearer(options =>
-    {   
+    {
+        options.MapInboundClaims = false;
         options.RequireHttpsMetadata = false;
         options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer=true,
-            ValidateAudience=true,
-            ValidateLifetime=true,
-            ValidateIssuerSigningKey=true,
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero,
+            ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
 //services
-builder.Services.AddScoped<ITokenService, TokenService>();
-builder.Services.AddScoped<IUtilidadesService,UtilidadesService>();
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ITokenDataSource, TokenService>();
+builder.Services.AddScoped<ItokenRepository, tokenRepository>();
+builder.Services.AddScoped<IUtilidadesService, UtilidadesService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using Microsoft.EntityFrameworkCore;
 
-namespace CRUDAPI.Models;
+namespace CRUDAPI.Domain.entities;
 
 public partial class HolamundoContext : DbContext
 {
@@ -17,7 +17,7 @@ public partial class HolamundoContext : DbContext
 
 
     public virtual DbSet<Usuario> Usuarios { get; set; }
-    public virtual DbSet<UsuarioAU> UsuariosAU { get; set; }    
+    public virtual DbSet<UsuarioAU> UsuariosAU { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -25,7 +25,7 @@ public partial class HolamundoContext : DbContext
             .UseCollation("utf8mb4_0900_ai_ci")
             .HasCharSet("utf8mb4");
 
-        
+
         modelBuilder.Entity<Usuario>(entity =>
         {
             entity.HasKey(e => e.Id).HasName("PRIMARY");

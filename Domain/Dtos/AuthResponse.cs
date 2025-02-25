@@ -1,4 +1,4 @@
-﻿namespace CRUDAPI.Dtos
+﻿namespace CRUDAPI.Domain.Dtos
 {
     public class AuthResponse
     {

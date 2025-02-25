@@ -5,13 +5,14 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CRUDAPI.Models;
-using CRUDAPI.Services;
 using Newtonsoft.Json;
-using CRUDAPI.Dtos;
-using CRUDAPI.Services.contrato;
+using CRUDAPI.Domain.Dtos;
+using CRUDAPI.Domain.entities;
+using CRUDAPI.Infrastructure.datasources;
+using CRUDAPI.Domain.DataSources;
+using CRUDAPI.Domain.Repositories;
 
-namespace CRUDAPI.Controllers
+namespace CRUDAPI.Presentation.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
@@ -19,19 +20,19 @@ namespace CRUDAPI.Controllers
     {
         private readonly HolamundoContext _context;
         //Servicios
-        private readonly ITokenService _tokenService;
+        private readonly ItokenRepository _tokenRepository;
         private readonly IUtilidadesService _utilidadesService;
-        private readonly IEmailService _emailService;
+      
         //Logger
         private readonly ILogger<UsuarioAUsController> _logger;
 
-        public UsuarioAUsController(HolamundoContext context, ITokenService tokenService, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService,IEmailService emailService)
+        public UsuarioAUsController(HolamundoContext context, ItokenRepository tokenRepo, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService)
         {
             _context = context;
-            _tokenService = tokenService;
+            _tokenRepository = tokenRepo;
             _logger = logger;
             _utilidadesService = utilidadesService;
-            _emailService = emailService;
+            
         }
 
         // GET: api/UsuarioAUs
@@ -94,37 +95,67 @@ namespace CRUDAPI.Controllers
 
             return NoContent();
         }
-        //[HttpPost("resetPassword")]
-        //public async Task<ActionResult<UsuarioAU>> resetPassword(ResetPasswordDTO resetPasswordDTO)
-        //{
-        //    var usuarios=await _context.UsuariosAU.FindAsync(resetPasswordDTO.Email);
-        //    if (usuarios is null)
-        //    {
-        //        return BadRequest(new AuthResponse
-        //        {
-        //            Message = "Usuario no encontrado"
-        //        });
-                
-        //    }
-        //    var result = await _context.UsuariosAU(resetPasswordDTO);
-
-        //}
-        //login
-        [HttpPost("login")]
-        public async Task<ActionResult<UsuarioAU>> Login(UsuarioAU usuarioAU)
+        //Cambiar contrasena
+        [HttpPut("ChangePassword/{id}")]
+        public async Task<IActionResult> ChangePassword(int id, UsuarioAU usuarioAU)
         {
-            var EncrypPass = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
-            var usuario = await _context.UsuariosAU.FirstOrDefaultAsync(u => u.Email == usuarioAU.Email && u.Constrasena == EncrypPass);
+            if (id != usuarioAU.Id)
+            {
+                return BadRequest();
+            }
+            var usuario = await _context.UsuariosAU.FindAsync(id);
+            if (usuario == null)
+            {
+                return NotFound();
+            }
+            usuario.Constrasena = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
+            _context.Entry(usuario).State = EntityState.Modified;
+            try
+            {
+                await _context.SaveChangesAsync();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                if (!UsuarioAUExists(id))
+                {
+                    return NotFound();
+                }
+                else
+                {
+                    throw;
+                }
+            }
+
+            return NoContent();
+        }
+        [HttpPost("login")]
+        public async Task<ActionResult<UsuarioResponseDTO>> Login(UsuarioResponseDTO usuarioResponse)
+        {
+            var EncrypPass = _utilidadesService.EncriptarClave(usuarioResponse.Constrasena);
+            var usuario = await _context.UsuariosAU.FirstOrDefaultAsync(u => u.Email == usuarioResponse.Email && u.Constrasena == EncrypPass);
             if (usuario == null)
             {
                 return NotFound("Credenciales Incorrectas");
             }
-            var token = _tokenService.GenerateToken(usuario);
+            var token = _tokenRepository.GenerateToken(usuario);
             return Ok(new AuthResponse
             {
                 Token = token,
                 Message = "Login Exitoso"
             });
+        }
+        [HttpPost("VToken")]
+        public ActionResult<bool> ValidarToken(string token)
+        {
+            var vali = _tokenRepository.ValidarToken(token);
+            Console.WriteLine($"validar token , {token}");
+            return Ok(vali);
+        }
+        [HttpGet("DecodeToken")]
+        public  ActionResult<UsuarioAU> DecodificarToken(string token)
+        {
+            var deco=_tokenRepository.DecodeToken(token);
+            return Ok(deco);
         }
 
         // POST: api/UsuarioAUs
@@ -163,25 +194,7 @@ namespace CRUDAPI.Controllers
 
             return NoContent();
         }
-        //Enviar Correos
-        [HttpPost("SendEmail")]
-        public async Task<IActionResult> SendEmail()
-        {
-            try
-            {
-                MailrequestDTO mailrequest = new MailrequestDTO();
-                mailrequest.ToEmail = "xavier10001985@gmail.com";
-                mailrequest.Subject = "Prueba de Correo";
-                mailrequest.Body = "<h1>Prueba de Correo</h1>";
-                await _emailService.SendEmailAsync(mailrequest);
-                return Ok("Correo Enviado");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex.Message, "Error al enviar correo");
-                return BadRequest(ex.Message);
-            }
-        }
+
 
         private bool UsuarioAUExists(int id)
         {

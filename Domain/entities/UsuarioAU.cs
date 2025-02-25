@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace CRUDAPI.Models;
+namespace CRUDAPI.Domain.entities;
 
 public partial class UsuarioAU
 {
