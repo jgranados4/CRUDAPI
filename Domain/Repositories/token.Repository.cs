@@ -6,6 +6,6 @@ namespace CRUDAPI.Domain.Repositories
     {
         string GenerateToken(UsuarioAU user);
         bool ValidarToken(string token);
-        UsuarioAU DecodeToken(string token);
+        UsuarioResponse DecodeToken(string token);
     }
 }

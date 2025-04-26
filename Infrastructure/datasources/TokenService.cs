@@ -83,7 +83,7 @@ namespace CRUDAPI.Infrastructure.datasources
             }
 
         }
-        public UsuarioAU DecodeToken(string token)
+        public UsuarioResponse DecodeToken(string token)
         {
             try
             {
@@ -97,13 +97,24 @@ namespace CRUDAPI.Infrastructure.datasources
 
                 // Extraer los claims
                 var userClaims = jsonToken?.Claims;
+                var expClaim = userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp)?.Value;
+                DateTime? expirationTime = null;
+                TimeSpan? tiempoRestante = null;
+                if (expClaim != null && long.TryParse(expClaim, out long expUnix))
+                {
+                    expirationTime = DateTimeOffset.FromUnixTimeSeconds(expUnix).UtcDateTime;
+                    tiempoRestante = expirationTime - DateTime.UtcNow;
+                }
 
-                return new UsuarioAU
+                return new UsuarioResponse
                 {
                     Id = int.Parse(userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.NameId)?.Value ?? "0"),
                     Nombre = userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Name)?.Value ?? "Desconocido",
                     Email = userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Email)?.Value ?? "Sin email",
-                    Rol = userClaims?.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value ?? "Sin rol"
+                    Rol = userClaims?.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value ?? "Sin rol",
+                    Expiracion = expirationTime,
+                    tiempoRestante = tiempoRestante?.TotalMinutes ?? 0,
+
                 };
             }
             catch (Exception ex)

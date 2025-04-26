@@ -12,9 +12,9 @@ namespace CRUDAPI.Infrastructure.repositories
             tokenDataSource = itoken;
         }
 
-        public UsuarioAU DecodeToken(String token)
+        public UsuarioResponse DecodeToken(String token)
         {
-            return tokenDataSource.DecodeToken(token);
+             return tokenDataSource.DecodeToken(token);
         }
 
         public string GenerateToken(UsuarioAU user)
