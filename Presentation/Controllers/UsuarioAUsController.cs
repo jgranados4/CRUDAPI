@@ -22,17 +22,18 @@ namespace CRUDAPI.Presentation.Controllers
         //Servicios
         private readonly ItokenRepository _tokenRepository;
         private readonly IUtilidadesService _utilidadesService;
+        private readonly IRefreshTokensource refresh;
       
         //Logger
         private readonly ILogger<UsuarioAUsController> _logger;
 
-        public UsuarioAUsController(HolamundoContext context, ItokenRepository tokenRepo, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService)
+        public UsuarioAUsController(HolamundoContext context, ItokenRepository tokenRepo, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService, IRefreshTokensource refreshT)
         {
             _context = context;
             _tokenRepository = tokenRepo;
             _logger = logger;
             _utilidadesService = utilidadesService;
-            
+            refresh = refreshT;
         }
 
         // GET: api/UsuarioAUs
@@ -138,9 +139,19 @@ namespace CRUDAPI.Presentation.Controllers
                 return NotFound("Credenciales Incorrectas");
             }
             var token = _tokenRepository.GenerateToken(usuario);
+            var refreshToken = refresh.GenerateRefreshToken();
+            ///**Token Refresh**
+            var refreshtokenEntity = new RefreshToken 
+            {
+                Token = refreshToken,
+                Expiration=DateTime.UtcNow.AddDays(2),
+                UsuarioId = usuario.Id,
+            };
+
             return Ok(new AuthResponse
             {
                 Token = token,
+                RefreshToken= refreshToken,
                 Message = "Login Exitoso"
             });
         }

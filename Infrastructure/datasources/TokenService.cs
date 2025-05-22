@@ -28,7 +28,7 @@ namespace CRUDAPI.Infrastructure.datasources
                 new Claim(JwtRegisteredClaimNames.NameId, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.Name, user.Nombre),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(ClaimTypes.Role,user.Rol)
+                new Claim("Rol",user.Rol)
             };
             //crear Token
             var token = new JwtSecurityToken(
@@ -111,7 +111,7 @@ namespace CRUDAPI.Infrastructure.datasources
                     Id = int.Parse(userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.NameId)?.Value ?? "0"),
                     Nombre = userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Name)?.Value ?? "Desconocido",
                     Email = userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Email)?.Value ?? "Sin email",
-                    Rol = userClaims?.FirstOrDefault(x => x.Type == ClaimTypes.Role)?.Value ?? "Sin rol",
+                    Rol = userClaims?.FirstOrDefault(x => x.Type == "Rol")?.Value ?? "Sin rol",
                     Expiracion = expirationTime,
                     tiempoRestante = tiempoRestante?.TotalMinutes ?? 0,
 

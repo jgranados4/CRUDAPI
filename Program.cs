@@ -11,6 +11,7 @@ using CRUDAPI.Infrastructure.datasources;
 using CRUDAPI.Domain.DataSources;
 using CRUDAPI.Domain.Repositories;
 using CRUDAPI.Infrastructure.repositories;
+using CRUDAPI;
 
 var builder = WebApplication.CreateBuilder(args);
 //Logger
@@ -51,14 +52,15 @@ builder.Services.AddSwaggerGen(c =>
 }
 );
 //Conexion a la base de datos
-builder.Services.AddDbContext<HolamundoContext>(options =>
+builder.Services.AddDbContextPool<HolamundoContext>(options =>
  options.UseMySql(builder.Configuration.GetConnectionString("conexion"), Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.34-mysql")));
 //cors
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("CorsPolicy", builder => builder.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    options.AddPolicy("CorsPolicy", builder => builder.WithOrigins("http://localhost:4200").AllowAnyMethod().AllowAnyHeader().AllowCredentials());
 });
 //Autentificacion JWT
+var jwtKey = builder.Configuration["Jwt:Key"] ?? throw new InvalidOperationException("Falta la clave JWT en la configuracion");
 builder.Services.AddAuthentication(config =>
 {
     config.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -78,14 +80,14 @@ builder.Services.AddAuthentication(config =>
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+            RoleClaimType="Rol",
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey))
+            
         };
     });
 //services
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddScoped<ITokenDataSource, TokenService>();
-builder.Services.AddScoped<ItokenRepository, tokenRepository>();
-builder.Services.AddScoped<IUtilidadesService, UtilidadesService>();
+builder.Services.AddApplicationServices();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
