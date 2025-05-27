@@ -56,8 +56,7 @@ namespace CRUDAPI.Presentation.Controllers
             return Ok(new AuthResponse
             {
                 Token = newAccessToken,
-                RefreshToken = newRefreshToken,
-                Message = "Token renovado exitosamente"
+                RefreshToken = newRefreshToken
             });
         }
 

@@ -6,26 +6,50 @@ namespace CRUDAPI.Infrastructure.datasources
     public interface IUtilidadesService
     {
         string EncriptarClave(string clave);
+        bool VerificarClave(string clave, string hashGuardado);
     }
     public class UtilidadesService : IUtilidadesService
     {
+        private const int SaltSize = 16; // 128 bits
+        private const int KeySize = 32; // 256 bits
+        private const int Iterations = 10000;
         public string EncriptarClave(string clave)
         {
 
 
-            using (SHA256 hash = SHA256.Create())
+            using var rng = RandomNumberGenerator.Create();
+            byte[] salt = new byte[SaltSize];
+            rng.GetBytes(salt);
+
+            using var pbkdf2 = new Rfc2898DeriveBytes(clave, salt, Iterations, HashAlgorithmName.SHA256);
+            byte[] key = pbkdf2.GetBytes(KeySize);
+
+            // Combina salt + hash para guardarlos juntos
+            var hashBytes = new byte[SaltSize + KeySize];
+            Buffer.BlockCopy(salt, 0, hashBytes, 0, SaltSize);
+            Buffer.BlockCopy(key, 0, hashBytes, SaltSize, KeySize);
+
+            return Convert.ToBase64String(hashBytes);
+
+
+        }
+        public bool VerificarClave(string clave, string hashGuardado)
+        {
+            var hashBytes = Convert.FromBase64String(hashGuardado);
+
+            byte[] salt = new byte[SaltSize];
+            Buffer.BlockCopy(hashBytes, 0, salt, 0, SaltSize);
+
+            using var pbkdf2 = new Rfc2898DeriveBytes(clave, salt, Iterations, HashAlgorithmName.SHA256);
+            byte[] key = pbkdf2.GetBytes(KeySize);
+
+            for (int i = 0; i < KeySize; i++)
             {
-                StringBuilder sb = new StringBuilder();
-                Encoding enc = Encoding.UTF8;
-
-                byte[] result = hash.ComputeHash(enc.GetBytes(clave));
-
-                foreach (byte b in result)
-                    sb.Append(b.ToString("x2"));
-                return sb.ToString();
+                if (hashBytes[i + SaltSize] != key[i])
+                    return false;
             }
 
-
+            return true;
         }
     }
 }
