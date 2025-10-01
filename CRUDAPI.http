@@ -1,0 +1,16 @@
+﻿@CRUDAPI_HostAddress = https://localhost:7266
+
+GET {{CRUDAPI_HostAddress}}/api/usuarioaus
+Authorization: {{$apiKey}}
+
+###
+
+POST {{CRUDAPI_HostAddress}}/api/usuarioaus/login
+Content-Type: application/json
+
+{
+  "constrasena": "12345678",
+  "email": "juan19971997@outlook.com"
+}
+
+###

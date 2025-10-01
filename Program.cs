@@ -5,13 +5,10 @@ using Microsoft.OpenApi.Models;
 using Microsoft.Extensions.Configuration;
 using Serilog;
 using System.Text;
-using CRUDAPI.Domain.Dtos;
-using CRUDAPI.Domain.entities;
-using CRUDAPI.Infrastructure.datasources;
-using CRUDAPI.Domain.DataSources;
 using CRUDAPI.Domain.Repositories;
-using CRUDAPI.Infrastructure.repositories;
-using CRUDAPI;
+using CRUDAPI.Application.Dtos;
+using CRUDAPI.Infrastructure.Persistence.context;
+using CRUDAPI.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 //Logger
@@ -51,9 +48,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 }
 );
-//Conexion a la base de datos
-builder.Services.AddDbContextPool<HolamundoContext>(options =>
- options.UseMySql(builder.Configuration.GetConnectionString("conexion"), Microsoft.EntityFrameworkCore.ServerVersion.Parse("8.0.34-mysql")));
 //cors
 builder.Services.AddCors(options =>
 {
@@ -87,14 +81,22 @@ builder.Services.AddAuthentication(config =>
     });
 //services
 builder.Services.AddHttpContextAccessor();
-builder.Services.AddApplicationServices();
+builder.Services.AddApplicationServices(builder.Configuration);
+builder.Services.AddApplicationInsightsTelemetry();
 var app = builder.Build();
-
+using (var scope = app.Services.CreateScope())
+{
+    var context = scope.ServiceProvider.GetRequiredService<BaseContext>();
+    //context.Database.EnsureCreated();
+    context.Database.Migrate();
+}
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
     app.UseSwaggerUI();
+    app.UseDeveloperExceptionPage();
+
 }
 app.UseSerilogRequestLogging();
 app.UseHttpsRedirection();
