@@ -1,17 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json;
-using CRUDAPI.Domain.Dtos;
+﻿using CRUDAPI.Application.Common.Responses;
+using CRUDAPI.Application.Dtos;
+using CRUDAPI.Application.UseCases;
 using CRUDAPI.Domain.entities;
-using CRUDAPI.Infrastructure.datasources;
-using CRUDAPI.Domain.DataSources;
-using CRUDAPI.Domain.Repositories;
-using CRUDAPI.Helpers;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace CRUDAPI.Presentation.Controllers
 {
@@ -19,215 +11,251 @@ namespace CRUDAPI.Presentation.Controllers
     [ApiController]
     public class UsuarioAUsController : ControllerBase
     {
-        private readonly HolamundoContext _context;
-        //Servicios
-        private readonly ItokenRepository _tokenRepository;
-        private readonly IUtilidadesService _utilidadesService;
-        private readonly IRefreshTokensource refresh;
-
-        //Logger
         private readonly ILogger<UsuarioAUsController> _logger;
 
-        public UsuarioAUsController(HolamundoContext context, ItokenRepository tokenRepo, ILogger<UsuarioAUsController> logger, IUtilidadesService utilidadesService, IRefreshTokensource refreshT)
+        // ✅ Use Cases - Single Responsibility per endpoint
+        private readonly LoginUsuarioUseCase _loginUseCase;
+        private readonly CreateUsuarioUseCase _createUsuarioUseCase;
+        private readonly GetUsuarioUseCase _getUsuarioUseCase;
+        private readonly UpdateUsuarioUseCase _updateUsuarioUseCase;
+        private readonly DeleteUsuarioUseCase _deleteUsuarioUseCase;
+        private readonly ChangePasswordUseCase _changePasswordUseCase;
+
+        // ✅ Token-specific Use Cases
+        private readonly ValidateTokenUseCase _validateTokenUseCase;
+        private readonly DecodeTokenUseCase _decodeTokenUseCase;
+
+        public UsuarioAUsController(
+            ILogger<UsuarioAUsController> logger,
+            LoginUsuarioUseCase loginUseCase,
+            CreateUsuarioUseCase createUsuarioUseCase,
+            GetUsuarioUseCase getUsuarioUseCase,
+            UpdateUsuarioUseCase updateUsuarioUseCase,
+            DeleteUsuarioUseCase deleteUsuarioUseCase,
+            ChangePasswordUseCase changePasswordUseCase,
+            ValidateTokenUseCase validateTokenUseCase,
+            DecodeTokenUseCase decodeTokenUseCase)
         {
-            _context = context;
-            _tokenRepository = tokenRepo;
             _logger = logger;
-            _utilidadesService = utilidadesService;
-            refresh = refreshT;
+            _loginUseCase = loginUseCase;
+            _createUsuarioUseCase = createUsuarioUseCase;
+            _getUsuarioUseCase = getUsuarioUseCase;
+            _updateUsuarioUseCase = updateUsuarioUseCase;
+            _deleteUsuarioUseCase = deleteUsuarioUseCase;
+            _changePasswordUseCase = changePasswordUseCase;
+            _validateTokenUseCase = validateTokenUseCase;
+            _decodeTokenUseCase = decodeTokenUseCase;
         }
 
-        // GET: api/UsuarioAUs
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<UsuarioAU>>> GetUsuariosAU()
+        /// <summary>
+        /// Login endpoint - Clean architecture implementation
+        /// Responsibility: HTTP concerns only
+        /// </summary>
+        [HttpPost("login")]
+        public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequestDTO request)
         {
-            if (_context.UsuariosAU == null)
-            {
-                return NotFound(ApiResponseFactory.NotFound<IEnumerable<UsuarioAU>>("No se encontró la entidad UsuariosAU."));
-
-
-            }
-            _logger.LogInformation("Obteniendo datos de la tabla UsuariosAU");
-            var usuarios = await _context.UsuariosAU.ToListAsync();
-            return Ok(ApiResponseFactory.Ok(usuarios));
-        }
-
-        // GET: api/UsuarioAUs/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<UsuarioAU>> GetUsuarioAU(int id)
-        {
-            var usuario = await _context.UsuariosAU.FindAsync(id);
-
-            if (usuario == null)
-            {
-                return NotFound(ApiResponseFactory.NotFound<UsuarioAU>("Usuario no encontrado."));
-            }
-
-            return Ok(ApiResponseFactory.Ok(usuario));
-        }
-        // POST: api/UsuarioAUs
-        [HttpPost]
-        public async Task<ActionResult<UsuarioAUResponseDto>> PostUsuarioAU(UsuarioAU usuarioAU)
-        {
-            if (_context.UsuariosAU == null)
-            {
-                return StatusCode(500, new ApiResponse<string>(
-                    HttpStatusHelper.GetStatusInfo(500),
-                    message: "El contexto UsuariosAU no está disponible."
-                ));
-            }
-            usuarioAU.Constrasena = _utilidadesService.EncriptarClave(usuarioAU.Constrasena);
-            _logger.LogInformation("Insertando datos en la tabla UsuariosAU" + usuarioAU.Constrasena);
-
-            _context.UsuariosAU.Add(usuarioAU);
-            await _context.SaveChangesAsync();
-            var responseDto = new UsuarioAUResponseDto
-            {
-                Id = usuarioAU.Id,
-                Nombre = usuarioAU.Nombre,
-                Email = usuarioAU.Email,
-                Rol=usuarioAU.Rol
-            };
-
-
-            return CreatedAtAction(nameof(GetUsuarioAU), new { id = usuarioAU.Id }, new ApiResponse<UsuarioAUResponseDto>(
-               HttpStatusHelper.GetStatusInfo(201),
-               responseDto,
-               "Usuario creado exitosamente."
-           ));
-        }
-
-        // DELETE: api/UsuarioAUs/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteUsuarioAU(int id)
-        {
-            if (_context.UsuariosAU == null)
-            {
-                return NotFound(ApiResponseFactory.NotFound<string>("Contexto UsuariosAU no encontrado."));
-            }
-            var usuarioAU = await _context.UsuariosAU.FindAsync(id);
-            if (usuarioAU == null)
-            {
-                return NotFound(ApiResponseFactory.NotFound<string>("Usuario no encontrado para eliminar."));
-            }
-
-            _context.UsuariosAU.Remove(usuarioAU);
-            await _context.SaveChangesAsync();
-
-            return Ok(ApiResponseFactory.Ok<string>(null, "Usuario eliminado correctamente."));
-        }
-        
-        // PUT: api/UsuarioAUs/5
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutUsuarioAU(int id, UsuarioAU usuarioAU)
-        {
-            if (id != usuarioAU.Id)
-            {
-                return BadRequest(ApiResponseFactory.BadRequest<string>("ID del usuario no coincide."));
-            }
-
-            _context.Entry(usuarioAU).State = EntityState.Modified;
-
             try
             {
-                await _context.SaveChangesAsync();
-                return NoContent(); // 204
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!UsuarioAUExists(id))
+                // ✅ Input validation (Controller responsibility)
+                if (!ModelState.IsValid)
                 {
-                    return NotFound(ApiResponseFactory.NotFound<string>("Usuario no encontrado."));
-                }
-                else
-                {
-                    return StatusCode(500, ApiResponseFactory.ServerError<string>("Error actualizando el usuario."));
-
-
+                    return BadRequest(ApiResponseFactory.BadRequest<string>("Datos de entrada inválidos"));
                 }
 
-            }
-        }
-        //Cambiar contrasena
-        [HttpPut("ChangePassword/{id}")]
-        public async Task<IActionResult> ChangePassword(int id, ResetPasswordDTO usuarioAU)
-        {
-            
-            var usuario = await _context.UsuariosAU.FindAsync(id);
-            if (usuario == null)
-            {
-                return NotFound(ApiResponseFactory.NotFound<string>("Usuario no encontrado."));
-            }
-            bool passwordCorrecta = _utilidadesService.VerificarClave(usuarioAU.CurrentPassword, usuario.Constrasena);
-            if (!passwordCorrecta)
-            {
-                return BadRequest(ApiResponseFactory.BadRequest<string>("La contraseña actual es incorrecta."));
-            }
+                // ✅ Delegate business logic to Use Case
+                var authResponse = await _loginUseCase.ExecuteAsync(request);
 
-
-            usuario.Constrasena = _utilidadesService.EncriptarClave(usuarioAU.NewPassword);
-            _context.Entry(usuario).State = EntityState.Modified;
-
-            try
+                // ✅ HTTP response formatting (Controller responsibility)
+                return Ok(ApiResponseFactory.Ok(authResponse, "Login exitoso"));
+            }
+            catch (ArgumentException ex)
             {
-                await _context.SaveChangesAsync();
-                return NoContent();
+                _logger.LogWarning("Datos inválidos en login: {Message}", ex.Message);
+                return BadRequest(ApiResponseFactory.BadRequest<string>(ex.Message));
+            }
+            catch (UnauthorizedAccessException)
+            {
+                _logger.LogWarning("Intento de login fallido para email: {Email}", request.Email);
+                return Unauthorized(ApiResponseFactory.Unauthorized<string>("Credenciales incorrectas"));
             }
             catch (Exception ex)
             {
-                _logger.LogError("Error cambiando contraseña: " + ex.Message);
-                if (!UsuarioAUExists(id))
-                    return NotFound(ApiResponseFactory.NotFound<string>("Usuario no encontrado."));
-                else
-                    throw;
+                _logger.LogError(ex, "Error inesperado durante el login");
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
             }
         }
-        [HttpPost("login")]
-        public async Task<ActionResult<UsuarioResponseDTO>> Login(UsuarioResponseDTO usuarioResponse)
+        [Authorize(Roles = "Administrador")]
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<UsuarioAU>>> GetUsuariosAU()
         {
-            var EncrypPass = _utilidadesService.EncriptarClave(usuarioResponse.Constrasena);
-            var usuario = await _context.UsuariosAU.FirstOrDefaultAsync(u => u.Email == usuarioResponse.Email);
-            if (usuario == null)
+            try
             {
-                return Unauthorized(ApiResponseFactory.Unauthorized<string>("Credenciales incorrectas."));
+                var usuarios = await _getUsuarioUseCase.GetAllAsync();
+                return Ok(ApiResponseFactory.Ok(usuarios));
             }
-            bool passwordCorrecta = _utilidadesService.VerificarClave(usuarioResponse.Constrasena, usuario.Constrasena);
-            if (!passwordCorrecta)
+            catch (Exception ex)
             {
-                return Unauthorized(ApiResponseFactory.Unauthorized<string>("Credenciales incorrectas."));
+                _logger.LogError(ex, "Error obteniendo usuarios");
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
             }
+        }
 
-            var token = _tokenRepository.GenerateToken(usuario);
-            var refreshToken = refresh.GenerateRefreshToken();
-            ///**Token Refresh**
-            var refreshtokenEntity = new RefreshToken
+        [HttpGet("{id}")]
+        public async Task<ActionResult<UsuarioAU>> GetUsuarioAU(int id)
+        {
+            try
             {
-                Token = refreshToken,
-                Expiration = DateTime.UtcNow.AddDays(2),
-                UsuarioId = usuario.Id,
-            };
-            var authResponse = new AuthResponse
+                var usuario = await _getUsuarioUseCase.GetByIdAsync(id);
+                return Ok(ApiResponseFactory.Ok(usuario));
+            }
+            catch (KeyNotFoundException)
             {
-                Token = token,
-                RefreshToken = refreshToken
-            };
-            return Ok(ApiResponseFactory.Ok(authResponse, "Login exitoso"));
+                return NotFound(ApiResponseFactory.NotFound<UsuarioAU>("Usuario no encontrado"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error obteniendo usuario {Id}", id);
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
+        }
+
+        [HttpPost]
+        public async Task<ActionResult<UsuarioAUResponseDto>> PostUsuarioAU([FromBody] CreateUsuarioRequestDTO request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ApiResponseFactory.BadRequest<string>("Datos de entrada inválidos"));
+                }
+
+                var usuario = await _createUsuarioUseCase.ExecuteAsync(request);
+                return CreatedAtAction(
+                    nameof(GetUsuarioAU),
+                    new { id = usuario.Id },
+                    ApiResponseFactory.Ok(usuario, "Usuario creado exitosamente"));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseFactory.BadRequest<string>(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creando usuario");
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
+        }
+        [HttpPut("{id}")]
+        public async Task<IActionResult> PutUsuarioAU(int id, [FromBody] UpdateUsuarioRequestDTO request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ApiResponseFactory.BadRequest<string>("Datos de entrada inválidos"));
+                }
+
+                await _updateUsuarioUseCase.ExecuteAsync(id, request);
+                return NoContent();
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseFactory.BadRequest<string>(ex.Message));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(ApiResponseFactory.NotFound<string>("Usuario no encontrado"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error actualizando usuario {Id}", id);
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteUsuarioAU(int id)
+        {
+            try
+            {
+                await _deleteUsuarioUseCase.ExecuteAsync(id);
+                return Ok(ApiResponseFactory.Ok<string>(null, "Usuario eliminado correctamente"));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(ApiResponseFactory.NotFound<string>("Usuario no encontrado"));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error eliminando usuario {Id}", id);
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
+        }
+
+        [Authorize]
+        [HttpPut("ChangePassword/{id}")]
+        public async Task<IActionResult> ChangePassword(int id, [FromBody] ChangePasswordRequestDTO request)
+        {
+            try
+            {
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ApiResponseFactory.BadRequest<string>("Datos de entrada inválidos"));
+                }
+
+                await _changePasswordUseCase.ExecuteAsync(id, request);
+                return Ok(ApiResponseFactory.Ok<string>(null, "Contraseña cambiada exitosamente"));
+            }
+            catch (KeyNotFoundException)
+            {
+                return NotFound(ApiResponseFactory.NotFound<string>("Usuario no encontrado"));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                return BadRequest(ApiResponseFactory.BadRequest<string>(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error cambiando contraseña para usuario {Id}", id);
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
         }
         [HttpPost("VToken")]
-        public ActionResult<bool> ValidarToken(string token)
+        public async Task<ActionResult<bool>> ValidarToken([FromBody] string token)
         {
-            var valido = _tokenRepository.ValidarToken(token);
-            return Ok(valido);
+            try
+            {
+                var isValid = await _validateTokenUseCase.ExecuteQuickValidationAsync(token);
+                return Ok(ApiResponseFactory.Ok(isValid,"Token Valido"));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseFactory.BadRequest<string>(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error validando token");
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
         }
+
         [HttpGet("DecodeToken")]
-        public ActionResult<UsuarioAU> DecodificarToken(string token)
+        public async Task<ActionResult<UsuarioAU>> DecodificarToken([FromQuery] string token)
         {
-            var decoded = _tokenRepository.DecodeToken(token);
-            return Ok(decoded);
-        }
-        private bool UsuarioAUExists(int id)
-        {
-            return (_context.UsuariosAU?.Any(e => e.Id == id)).GetValueOrDefault();
+            try
+            {
+                var decoded = await _decodeTokenUseCase.ExecuteQuickDecodeAsync(token);
+                return Ok(ApiResponseFactory.Ok(decoded));
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ApiResponseFactory.BadRequest<string>(ex.Message));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error decodificando token");
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
         }
     }
 }

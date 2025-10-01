@@ -1,11 +1,14 @@
-﻿using CRUDAPI.Domain.DataSources;
-using CRUDAPI.Domain.Dtos;
-using CRUDAPI.Domain.entities;
+﻿using CRUDAPI.Application.Common.Responses;
+using CRUDAPI.Application.Dtos;
+using CRUDAPI.Application.UseCases;
 using CRUDAPI.Domain.Repositories;
-using CRUDAPI.Infrastructure.datasources;
+using CRUDAPI.Domain.Services;
+using CRUDAPI.Infrastructure.Persistence.context;
+using CRUDAPI.Infrastructure.services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security;
 
 namespace CRUDAPI.Presentation.Controllers
 {
@@ -13,52 +16,155 @@ namespace CRUDAPI.Presentation.Controllers
     [ApiController]
     public class RefreshTokenController : ControllerBase
     {
-        private readonly HolamundoContext _context;
-        private readonly ItokenRepository _tokenRepository;
-        private readonly IRefreshTokensource refresh;
-        public RefreshTokenController(
-            HolamundoContext context, ItokenRepository tokenRepo,IRefreshTokensource refreshTokensource, IRefreshTokensource refreshT) 
-        {
-            _context = context;
-            _tokenRepository = tokenRepo;
-            refresh = refreshTokensource;
+        #region Dependencias - Casos de Uso Únicamente
 
+        private readonly RefreshTokenUseCase _refreshTokenUseCase;
+        private readonly RevokeTokenUseCase _revokeTokenUseCase;
+        private readonly RevokeAllUserTokensUseCase _revokeAllTokensUseCase;
+        private readonly ILogger<RefreshTokenController> _logger;
+        #endregion
+
+        public RefreshTokenController(
+           RefreshTokenUseCase refreshTokenUseCase,
+           RevokeTokenUseCase revokeTokenUseCase,
+           RevokeAllUserTokensUseCase revokeAllTokensUseCase,
+           ILogger<RefreshTokenController> logger)
+        {
+            _refreshTokenUseCase = refreshTokenUseCase;
+            _revokeTokenUseCase = revokeTokenUseCase;
+            _revokeAllTokensUseCase = revokeAllTokensUseCase;
+            _logger = logger;
         }
         [HttpPost("refresh")]
         public async Task<ActionResult<AuthResponse>> RefreshToken([FromBody] TokenRequest request)
         {
-            var storedToken = await _context.RefreshTokens
-                .Include(r => r.Usuario)
-                .FirstOrDefaultAsync(r => r.Token == request.RefreshToken && !r.IsRevoked);
-
-            if (storedToken == null || storedToken.Expiration < DateTime.UtcNow)
+            // ✅ CAPA DE PRESENTACIÓN: Validación superficial de entrada
+            if (!ModelState.IsValid)
             {
-                return Unauthorized("Refresh Token inválido o expirado.");
+                _logger.LogWarning("Solicitud de refresh token con modelo inválido");
+                return BadRequest(ApiResponseFactory.BadRequest<string>("Datos de entrada inválidos"));
             }
 
-            var newAccessToken = _tokenRepository.GenerateToken(storedToken.Usuario);
-            var newRefreshToken = refresh.GenerateRefreshToken();
-
-            // Revocar el token anterior
-            storedToken.IsRevoked = true;
-
-            // Guardar nuevo token
-            var newTokenEntity = new RefreshToken
+            try
             {
-                Token = newRefreshToken,
-                Expiration = DateTime.UtcNow.AddDays(7),
-                UsuarioId = storedToken.UsuarioId
-            };
+                // 🎯 DELEGACIÓN PURA: El controlador transfiere toda la responsabilidad al caso de uso
+                var result = await _refreshTokenUseCase.ExecuteAsync(request);
 
-            _context.RefreshTokens.Add(newTokenEntity);
-            await _context.SaveChangesAsync();
-
-            return Ok(new AuthResponse
+                _logger.LogInformation("Refresh token exitoso");
+                return Ok(result);
+            }
+            catch (ArgumentException ex)
             {
-                Token = newAccessToken,
-                RefreshToken = newRefreshToken
-            });
+                // ✅ Excepción de validación de dominio → HTTP 400 Bad Request
+                _logger.LogWarning("Argumentos inválidos en refresh token: {Message}", ex.Message);
+                return BadRequest(ApiResponseFactory.BadRequest<string>(ex.Message));
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                // ✅ Excepción de autorización de dominio → HTTP 401 Unauthorized
+                _logger.LogWarning("Token no autorizado: {Message}", ex.Message);
+                return Unauthorized(ApiResponseFactory.Unauthorized<string>(ex.Message));
+            }
+            catch (SecurityException ex)
+            {
+                // ✅ Excepción de seguridad crítica → HTTP 401 con mensaje específico
+                _logger.LogError("Violación de seguridad detectada: {Message}", ex.Message);
+                return Unauthorized(ApiResponseFactory.Unauthorized<string>(ex.Message));
+            }
+            catch (InvalidOperationException ex)
+            {
+                // ✅ Error interno del sistema → HTTP 500 Internal Server Error
+                _logger.LogError(ex, "Error interno en refresh token");
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
         }
 
+        [HttpPost("revoke")]
+        public async Task<IActionResult> RevokeToken([FromBody] TokenRequest request)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ApiResponseFactory.BadRequest<string>("Datos de entrada inválidos"));
+            }
+
+            try
+            {
+                var success = await _revokeTokenUseCase.ExecuteAsync(request.RefreshToken);
+
+                if (success)
+                {
+                    _logger.LogInformation("Token revocado exitosamente");
+                    return Ok(ApiResponseFactory.Ok("Token revocado exitosamente"));
+                }
+                else
+                {
+                    _logger.LogWarning("Intento de revocar token inexistente o ya revocado");
+                    return NotFound(ApiResponseFactory.NotFound<string>("Token no encontrado o ya revocado"));
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error interno revocando token");
+                return StatusCode(500, ApiResponseFactory.ServerError<string>("Error interno del servidor"));
+            }
+        }
+        [HttpPost("revoke-all")]
+        public async Task<IActionResult> RevokeAllTokens([FromBody] RevokeAllTokensRequest request)
+        {
+            // ✅ Validación de entrada en capa de presentación
+            if (!ModelState.IsValid)
+            {
+                _logger.LogWarning("Solicitud de revocación masiva con datos inválidos para usuario {UserId}",
+                    request?.UsuarioId);
+                return BadRequest(ApiResponseFactory.BadRequest<string>("Datos de entrada inválidos"));
+            }
+
+            try
+            {
+                // 🎯 Delegación completa al caso de uso especializado
+                var revokedCount = await _revokeAllTokensUseCase.ExecuteAsync(request.UsuarioId);
+
+                _logger.LogInformation("Revocación masiva exitosa: {Count} tokens revocados para usuario {UserId}",
+                    revokedCount, request.UsuarioId);
+
+                return Ok(ApiResponseFactory.Ok($"{revokedCount} tokens revocados exitosamente"));
+            }
+            catch (Exception ex)
+            {
+                // ✅ Error crítico: Logging detallado para investigación posterior
+                _logger.LogError(ex, "Error crítico en revocación masiva para usuario {UserId}", request.UsuarioId);
+
+                return StatusCode(500, ApiResponseFactory.ServerError<string>(
+                    "Error interno del servidor. La operación ha sido registrada para revisión."));
+            }
+        }
+        [HttpGet("health")]
+        public async Task<IActionResult> HealthCheck()
+        {
+            try
+            {
+                // Verificación ligera: ¿Puede el sistema acceder al repositorio?
+                // En un sistema real, podrías verificar conexión a BD, servicios externos, etc.
+
+                _logger.LogDebug("Health check del sistema de refresh tokens");
+
+                return Ok(new
+                {
+                    status = "healthy",
+                    timestamp = DateTime.UtcNow,
+                    service = "RefreshTokenService"
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Health check falló");
+                return StatusCode(503, new
+                {
+                    status = "unhealthy",
+                    timestamp = DateTime.UtcNow,
+                    error = "Service temporarily unavailable"
+                });
+            }
+        }
     }
 }
