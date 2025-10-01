@@ -1,28 +1,29 @@
-﻿using CRUDAPI.Domain.DataSources;
+﻿using CRUDAPI.Application.Dtos;
 using CRUDAPI.Domain.entities;
+using CRUDAPI.Domain.Services;
 using Microsoft.IdentityModel.Tokens;
 using NuGet.Common;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 
-namespace CRUDAPI.Infrastructure.datasources
+namespace CRUDAPI.Infrastructure.Security
 {
-    
-    public class TokenService : ITokenDataSource
+
+    public class TokenService : ITokenService
     {
         private readonly IConfiguration _config;
         private readonly IHttpContextAccessor _httpContextAccessor;
-        public TokenService(IConfiguration config,IHttpContextAccessor httpContext)
+        public TokenService(IConfiguration config, IHttpContextAccessor httpContext)
         {
             _config = config;
             _httpContextAccessor = httpContext;
         }
-        public string GenerateToken(UsuarioAU user)
+        public string GenerateToken(UsuarioAURequestDTO user)
         {
             var Key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
             var signIn = new SigningCredentials(Key, SecurityAlgorithms.HmacSha256Signature);
-
+            var expiryMinutes = int.Parse(_config["Jwt:ExpiryMinutes"]!);
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.NameId, user.Id.ToString()),
@@ -35,7 +36,7 @@ namespace CRUDAPI.Infrastructure.datasources
                                issuer: _config["Jwt:Issuer"],
                                               audience: _config["Jwt:Audience"],
                                                              claims: claims,
-                                                                            expires: DateTime.Now.AddMinutes(30),
+                                                                            expires: DateTime.UtcNow.AddMinutes(expiryMinutes),
                             signingCredentials: signIn);
             return new JwtSecurityTokenHandler().WriteToken(token);
         }
@@ -113,7 +114,7 @@ namespace CRUDAPI.Infrastructure.datasources
                     Email = userClaims?.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Email)?.Value ?? "Sin email",
                     Rol = userClaims?.FirstOrDefault(x => x.Type == "Rol")?.Value ?? "Sin rol",
                     Expiracion = expirationTime,
-                    tiempoRestante = tiempoRestante?.TotalMinutes ?? 0,
+                    tiempoRestante = tiempoRestante?.TotalSeconds ?? 0,
 
                 };
             }

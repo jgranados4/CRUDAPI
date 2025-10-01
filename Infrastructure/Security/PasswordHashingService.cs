@@ -1,14 +1,11 @@
-﻿using System.Security.Cryptography;
+﻿using CRUDAPI.Domain.Services;
+using System.Security.Cryptography;
 using System.Text;
 
-namespace CRUDAPI.Infrastructure.datasources
+namespace CRUDAPI.Infrastructure.Security
 {
-    public interface IUtilidadesService
-    {
-        string EncriptarClave(string clave);
-        bool VerificarClave(string clave, string hashGuardado);
-    }
-    public class UtilidadesService : IUtilidadesService
+    
+    public class PasswordHashingService : IPasswordHashingService
     {
         private const int SaltSize = 16; // 128 bits
         private const int KeySize = 32; // 256 bits
