@@ -59,12 +59,11 @@ El proyecto sigue **Clean Architecture**, dividiendo responsabilidades en capas:
 
 ## 🚀 Tecnologías utilizadas
 
-* **.NET 8** (compatible con .NET 6/7)
+* **.NET 9**
 * **Entity Framework Core** (persistencia)
 * **JWT (Json Web Tokens)**
 * **Refresh Tokens seguros** (almacenados en DB)
 * **SQL Server / PostgreSQL** (configurable)
-* **Docker** (despliegue rápido con `docker-compose`)
 
 ---
 
