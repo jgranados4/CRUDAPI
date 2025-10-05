@@ -192,7 +192,6 @@ namespace CRUDAPI.Presentation.Controllers
             }
         }
 
-        [Authorize]
         [HttpPut("ChangePassword/{id}")]
         public async Task<IActionResult> ChangePassword(int id, [FromBody] ChangePasswordRequestDTO request)
         {
