@@ -8,14 +8,15 @@ Se incluye manejo de **JWT + Refresh Tokens**, eliminación de **tokens caducado
 
 ## 📖 Características principales
 
-✔ **Registro y login de usuarios**
-✔ **Autenticación con JWT** (Access Token + Refresh Token)
-✔ **Renovación de tokens** sin necesidad de volver a loguearse
-✔ **Revocación de tokens** individuales o en lote (logout global)
-✔ **Límite de sesiones por usuario**
-✔ **Eliminación automática de tokens viejos**
-✔ **Arquitectura limpia** (independencia de frameworks, capas desacopladas)
-✔ **Patrones de diseño aplicados** (Repository, Use Case, Dependency Injection)
+✔ Registro y login de usuarios
+✔ Autenticación con JWT (Access Token + Refresh Token)
+✔ Renovación de tokens sin necesidad de volver a loguearse
+✔ Revocación de tokens individuales o en lote (logout global)
+✔ Límite de sesiones por usuario
+✔ Eliminación automática de tokens viejos
+✔ Arquitectura limpia (independencia de frameworks, capas desacopladas)
+✔ Patrones de diseño aplicados (Repository, Use Case, Dependency Injection)
+✔ Validación de DTOs centralizada mediante constantes reutilizables
 
 ---
 
@@ -26,6 +27,8 @@ El proyecto sigue **Clean Architecture**, dividiendo responsabilidades en capas:
 ```plaintext
 📦 src
  ┣ 📂 Application        # Lógica de aplicación (qué hace el sistema)
+   ┣ 📂 Constants
+ ┃  ┗ 📜 ValidationConstants.cs
  ┃ ┣ 📂 Common           # Utilidades y clases base
  ┃ ┣ 📂 Dtos             # Data Transfer Objects (entrada/salida de datos)
  ┃ ┣ 📂 Mappings         # AutoMapper profiles (DTOs ↔ Entidades)

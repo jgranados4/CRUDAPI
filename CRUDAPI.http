@@ -1,16 +1,41 @@
-﻿@CRUDAPI_HostAddress = https://localhost:7266
+﻿
 
-GET {{CRUDAPI_HostAddress}}/api/usuarioaus
+GET {{HostAddress}}/api/usuarioaus
 Authorization: {{$apiKey}}
 
 ###
 
-POST {{CRUDAPI_HostAddress}}/api/usuarioaus/login
+POST {{HostAddress}}/api/usuarioaus/login
 Content-Type: application/json
 
 {
-  "constrasena": "12345678",
-  "email": "juan19971997@outlook.com"
+  "constrasena": "*qL#ypx#yVS%gR8%",
+  "email": "alex19971997@outlook.com"
+}
+
+###
+
+@id=1002
+PUT {{HostAddress}}/api/usuarioaus/ChangePassword/{{id}}
+Content-Type: application/json
+
+{
+  "currentPassword": "*qL#ypx#yVS%gR88%",
+  "newPassword": "*qL#ypx#yVS%gR8%",
+  "confirmPassword": "*qL#ypx#yVS%gR8%"
+}
+
+###
+
+POST {{HostAddress}}/api/usuarioaus
+Authorization: {{$apiKey}}
+Content-Type: application/json
+
+{
+  "nombre": "Alex parra",
+  "email": "alex19971997@outlook.com",
+  "contrasena": "*qL#ypx#yVS%gR9%",
+  "rol": "Administrador"
 }
 
 ###
