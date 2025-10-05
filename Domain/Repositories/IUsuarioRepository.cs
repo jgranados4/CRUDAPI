@@ -18,5 +18,6 @@ namespace CRUDAPI.Domain.Repositories
         Task<bool> ExistsByIdAsync(int id);
         Task<(IEnumerable<UsuarioAU> usuarios, int totalCount)> GetPagedAsync(int page, int pageSize, string? searchTerm = null, string? rol = null, string sortBy = "Nombre", bool isAscending = true);
         Task<IEnumerable<UsuarioAU>> SearchUsersAsync(string searchTerm);
+        Task UpdatePasswordAsync(int userId, string newPasswordHash);
     }
 }

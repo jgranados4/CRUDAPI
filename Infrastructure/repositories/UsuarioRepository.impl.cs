@@ -175,6 +175,37 @@ namespace CRUDAPI.Infrastructure.repositories
                 throw;
             }
         }
+        public async Task UpdatePasswordAsync(int userId, string newPasswordHash) {
+            try
+            {
+
+                var existingUser = await _context.UsuariosAU.FindAsync(userId);
+                if (existingUser == null)
+                    throw new KeyNotFoundException($"Usuario con ID {userId} no encontrado");
+
+                _logger.LogInformation("Actualizando contraseña para usuario: {UserId}", userId);
+                _logger.LogInformation("Hash anterior: {OldHash}", existingUser.Constrasena);
+                _logger.LogInformation("Hash nuevo: {NewHash}", newPasswordHash);
+
+                // Actualiza solo la contraseña
+                existingUser.Constrasena = newPasswordHash;
+
+                // Marca explícitamente como modificado
+                _context.Entry(existingUser).Property(u => u.Constrasena).IsModified = true;
+
+                await _context.SaveChangesAsync();
+
+                // Verifica que se guardó
+                var updatedUser = await _context.UsuariosAU.FindAsync(userId);
+                _logger.LogInformation("Contraseña actualizada. Hash en BD: {CurrentHash}", updatedUser?.Constrasena);
+                _logger.LogInformation("¿Se guardó correctamente? {Success}", updatedUser?.Constrasena == newPasswordHash);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error actualizando contraseña del usuario: {UserId}", userId);
+                throw;
+            }
+        }
         public async Task DeleteAsync(int id)
         {
             try

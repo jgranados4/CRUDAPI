@@ -81,8 +81,8 @@ namespace CRUDAPI.Infrastructure.services
                 // Obtiene el rol del usuario desde los claims para validaciones de autorización
                 // Fundamental para implementar control de acceso basado en roles (RBAC)
                 var context = _httpContextAccessor.HttpContext;
-                var roleClaim = context?.User?.FindFirst(ClaimTypes.Role)
-                               ?? context?.User?.FindFirst("role");
+                var roleClaim = context?.User?.FindFirst("Rol");
+                
 
                 if (!string.IsNullOrEmpty(roleClaim?.Value))
                 {

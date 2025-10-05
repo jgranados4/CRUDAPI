@@ -45,10 +45,7 @@ namespace CRUDAPI.Application.UseCases
                     throw new ArgumentException("El ID del usuario debe ser mayor a cero", nameof(userId));
                 }
 
-                // Valida que el usuario esté autenticado y autorizado para esta operación
-                // Solo permite cambios por el propio usuario o administradores
-                await ValidateUserAuthorizationAsync(userId);
-
+              
                 // Obtiene la entidad del usuario para validaciones de contraseña actual
                 var user = await _usuarioRepository.GetByIdAsync(userId);
                 if (user == null)
@@ -64,18 +61,12 @@ namespace CRUDAPI.Application.UseCases
                 // Genera el hash seguro de la nueva contraseña
                 // Utiliza el servicio de dominio para mantener consistencia criptográfica
                 var newPasswordHash = _passwordHashingService.EncriptarClave(request.NewPassword);
-
-                // Actualiza la contraseña en la entidad del usuario
-                user.Constrasena = newPasswordHash;
                 // En implementación completa, se actualizaría también LastPasswordChange
-
-                // Persiste los cambios a través del repositorio
-                await _usuarioRepository.UpdateAsync(user);
-
+                // ✅ USA EL NUEVO MÉTODO
+                await _usuarioRepository.UpdatePasswordAsync(userId, newPasswordHash);
                 // Invalida todas las sesiones activas por seguridad
                 // Fuerza re-autenticación en todos los dispositivos
                 await InvalidateAllUserSessionsAsync(userId);
-
                 // Registra el cambio exitoso para auditoría
                 await _passwordPolicyService.LogPasswordChangeAttemptAsync(userId, true);
 

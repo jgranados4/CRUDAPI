@@ -10,7 +10,7 @@ namespace CRUDAPI.Infrastructure.services
         private readonly ILogger<UsuarioValidationService> _logger;
 
         // Valid roles defined by business rules
-        private static readonly HashSet<string> ValidRoles = new() { "Admin", "User", "Manager", "Guest" };
+        private static readonly HashSet<string> ValidRoles = new() { "Administrador", "User", "Manager", "Guest", "cliente" };
 
         public UsuarioValidationService(IUsuarioRepository usuarioRepository, ILogger<UsuarioValidationService> logger)
         {

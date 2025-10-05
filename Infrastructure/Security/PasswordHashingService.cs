@@ -40,13 +40,9 @@ namespace CRUDAPI.Infrastructure.Security
             using var pbkdf2 = new Rfc2898DeriveBytes(clave, salt, Iterations, HashAlgorithmName.SHA256);
             byte[] key = pbkdf2.GetBytes(KeySize);
 
-            for (int i = 0; i < KeySize; i++)
-            {
-                if (hashBytes[i + SaltSize] != key[i])
-                    return false;
-            }
-
-            return true;
+            byte[] keyStored = new byte[KeySize];
+            Buffer.BlockCopy(hashBytes, SaltSize, keyStored, 0, KeySize);
+            return CryptographicOperations.FixedTimeEquals(key, keyStored);
         }
     }
 }
