@@ -1,4 +1,5 @@
-﻿using System.ComponentModel.DataAnnotations;
+﻿using CRUDAPI.Application.Constants;
+using System.ComponentModel.DataAnnotations;
 
 namespace CRUDAPI.Application.Dtos
 {
@@ -8,9 +9,9 @@ namespace CRUDAPI.Application.Dtos
         [StringLength(255, MinimumLength = 2, ErrorMessage = "El nombre debe tener entre 2 y 255 caracteres")]
         public string Nombre { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "El email es requerido")]
+        [Required(ErrorMessage = ValidationConstants.EmailRequiredMessage)]
         [EmailAddress(ErrorMessage = "Formato de email inválido")]
-        [StringLength(300, ErrorMessage = "El email no puede exceder 300 caracteres")]
+        [StringLength(ValidationConstants.EmailMaxLength, ErrorMessage = ValidationConstants.EmailMaxLengthMessage)]
         public string Email { get; set; } = string.Empty;
 
         [Required(ErrorMessage = "El rol es requerido")]
